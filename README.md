@@ -1,102 +1,53 @@
-# DEXI YOLO Training Pipeline
-
-A complete training pipeline for custom YOLO models with rotation and scale invariance, designed specifically for drone-based object detection.
-
-## Features
-
-- **Rotation-invariant training**: 360° rotation augmentation for drone perspectives
-- **Scale-invariant training**: Multi-scale augmentation for varying altitudes
-- **Complete data pipeline**: From raw images to trained models
-- **Optimized for deployment**: Supports conversion to ONNX for edge devices
-- **Comprehensive augmentation**: Lighting, noise, blur, and geometric transforms
+# YOLO Training Setup for Drone Detection
 
 ## Quick Start
 
-### 1. Setup Environment
+1. **Add your 6 base images** to a folder (e.g., `base_images/`)
+   - Name them clearly: `bird.jpg`, `dog.jpg`, `cat.jpg`, `motorcycle.jpg`, `car.jpg`, `truck.jpg`
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install ultralytics opencv-python numpy
-```
+2. **Generate augmented dataset:**
+   ```bash
+   python augment_dataset.py --input base_images/ --count 100
+   ```
 
-### 2. Prepare Your Images
+3. **Install ultralytics:**
+   ```bash
+   pip install ultralytics
+   ```
 
-Place your base images in a folder (e.g., `base_images/`). Name them clearly:
-- `bird.jpg`, `dog.jpg`, `cat.jpg`, `motorcycle.jpg`, `car.jpg`, `truck.jpg`
+4. **Train the model:**
+   ```bash
+   python train_yolo.py --model n --epochs 100
+   ```
 
-### 3. Generate Training Dataset
+## Data Augmentation Features
 
-```bash
-python augment_dataset.py --input base_images/ --count 150
-```
-
-This generates 150 augmented variants per image with:
-- 360° rotations
-- Scale variations (0.7x - 1.3x)  
-- Brightness/contrast changes
-- Gaussian noise and blur
-- Proper YOLO bounding box labels
-
-### 4. Train Model
-
-```bash
-python train_yolo.py --model n --epochs 50 --batch 8
-```
-
-Models available: `n` (nano), `s` (small), `m` (medium), `l` (large), `x` (xlarge)
-
-## File Structure
-
-```
-dexi_yolo_train/
-├── augment_dataset.py     # Data augmentation script
-├── train_yolo.py         # Training script  
-├── dataset.yaml          # YOLO dataset configuration
-├── train/               # Training images and labels
-├── val/                 # Validation images and labels
-├── runs/               # Training outputs and metrics
-└── README.md
-```
+The augmentation script generates variations with:
+- **360° rotations** (critical for drone orientation independence)
+- **Scale variations** (0.7x to 1.3x)
+- **Brightness/contrast changes**
+- **Gaussian noise and blur**
+- **Proper YOLO bounding box labels**
 
 ## Training Configuration
 
-- **Classes**: 6 custom classes (bird, dog, cat, motorcycle, car, truck)
-- **Base Model**: YOLOv8 with COCO pre-trained weights
-- **Optimization**: AdamW optimizer with learning rate scheduling
-- **Augmentation**: Rotation-invariant with minimal additional transforms during training
-- **Output**: PyTorch (.pt) models ready for deployment
+- **6 classes:** bird, dog, cat, motorcycle, car, truck
+- **Pre-trained YOLOv8 base:** Starts with COCO weights
+- **Optimized for single objects:** Each image contains one centered object
+- **Rotation-invariant:** No additional rotation augmentation during training
 
-## Model Deployment
+## Model Sizes
 
-After training, your best model will be saved to:
-```
-runs/detect/drone_detection*/weights/best.pt
-```
+- `n` (nano): Fastest, smallest (~3MB)
+- `s` (small): Balanced (~11MB)
+- `m` (medium): More accurate (~25MB)
 
-### Convert to ONNX (for deployment)
-```python
-from ultralytics import YOLO
-model = YOLO('runs/detect/drone_detection/weights/best.pt')
-model.export(format='onnx')
-```
+For drone deployment, start with nano model for speed.
 
-## Integration with DEXI
+## Expected Results
 
-This training pipeline is designed to work with the DEXI YOLO ROS2 node. Replace the default model with your trained model for custom object detection.
-
-## Requirements
-
-- Python 3.8+
-- PyTorch
-- Ultralytics YOLO
-- OpenCV
-- NumPy
-
-## License
-
-Licensed under the same terms as the DEXI project.
-
-## Contributing
-
-This pipeline is part of the DEXI ecosystem. For issues and contributions, please refer to the main DEXI project guidelines.
+With 100 augmentations per class (600 total images), you should achieve:
+- High accuracy on your specific 6 classes
+- Rotation invariance up to 360°
+- Scale invariance for drone altitude changes
+- Good performance in various lighting conditions
