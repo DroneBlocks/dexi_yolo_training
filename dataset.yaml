@@ -1,0 +1,19 @@
+# YOLO Dataset Configuration for Drone Detection
+# 6-class custom dataset: bird, dog, cat, motorcycle, car, truck
+
+# Dataset paths (relative to this file)
+path: .
+train: train/images
+val: val/images
+
+# Number of classes
+nc: 6
+
+# Class names
+names:
+  0: bird
+  1: dog
+  2: cat
+  3: motorcycle
+  4: car
+  5: truck
