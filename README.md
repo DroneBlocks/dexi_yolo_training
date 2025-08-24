@@ -7,7 +7,7 @@
 🌟 **Run in Google Colab with free GPU access:**
 
 1. **Open the Colab notebook:**
-   - Click: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/YOUR_USERNAME/dexi_yolo_training/blob/main/YOLO_Training_Tutorial_Colab.ipynb)
+   - Click: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/droneblocks/dexi_yolo_training/blob/main/YOLO_Training_Tutorial_Colab.ipynb)
    - Or go to [Google Colab](https://colab.research.google.com/) and upload `YOLO_Training_Tutorial_Colab.ipynb`
 
 2. **Enable GPU for faster training:**
