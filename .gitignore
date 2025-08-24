@@ -27,14 +27,24 @@ venv/
 env/
 ENV/
 
-# Training data and outputs
-train/images/
-train/labels/
-val/images/
-val/labels/
+# YOLO Training outputs (keep structure, ignore large files)
 runs/
 *.pt
 *.onnx
+
+# Dataset files (ignore augmented images but keep originals)
+train/images/*_[0-9][0-9][0-9].jpg
+train/labels/*_[0-9][0-9][0-9].txt
+val/images/*
+val/labels/*
+
+# Keep original base images (important for the project)
+!train/images/bird.jpg
+!train/images/car.jpg
+!train/images/cat.jpg
+!train/images/dog.jpg
+!train/images/motorcycle.jpg
+!train/images/truck.jpg
 
 # OS files
 .DS_Store
@@ -57,3 +67,31 @@ Thumbs.db
 # Cache files
 *.cache
 labels.cache
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# YOLO/ML specific
+wandb/
+tensorboard_logs/
+*.weights
+*.cfg
+darknet53.conv.74
+
+# Temporary files
+*.tmp
+*.temp
+.temporary
+*.bak
+
+# MacOS specific (since you're on Mac)
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon*
+
+# Windows specific (for collaborators)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
