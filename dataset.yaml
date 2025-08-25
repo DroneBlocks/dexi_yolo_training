@@ -2,9 +2,9 @@
 # 6-class custom dataset: bird, dog, cat, motorcycle, car, truck
 
 # Dataset paths (relative to this file)
+# YOLO will automatically split train data for validation (80/20 split)
 path: .
 train: train/images
-val: val/images
 
 # Number of classes
 nc: 6
