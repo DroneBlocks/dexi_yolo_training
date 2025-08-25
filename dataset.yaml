@@ -1,10 +1,11 @@
-# YOLO Dataset Configuration for Drone Detection
+# YOLO Dataset Configuration for Drone Detection  
 # 6-class custom dataset: bird, dog, cat, motorcycle, car, truck
 
 # Dataset paths (relative to this file)
-# YOLO will automatically split train data for validation (80/20 split)
+# Note: Both train and val point to same folder - YOLO will auto-split during training
 path: .
 train: train/images
+val: train/images
 
 # Number of classes
 nc: 6
