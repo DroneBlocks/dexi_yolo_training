@@ -19,6 +19,11 @@ requests>=2.23.0
 tqdm>=4.64.0
 psutil
 
+# Model export and deployment
+onnx>=1.12.0
+onnxruntime>=1.12.0
+onnxslim>=0.1.59
+
 # Development (optional)
 jupyter
 ipython
