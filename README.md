@@ -7,17 +7,15 @@
 🌟 **Run in Google Colab with free GPU access:**
 
 1. **Open the Colab notebook:**
-   - Click: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/droneblocks/dexi_yolo_training/blob/main/YOLO_Training_Tutorial_Colab.ipynb)
-   - Or go to [Google Colab](https://colab.research.google.com/) and upload `YOLO_Training_Tutorial_Colab.ipynb`
+   - Click: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/droneblocks/dexi_yolo_training/blob/main/DEXI_YOLO_Training_Google_Colab.ipynb)
+   - Or go to [Google Colab](https://colab.research.google.com/) and upload `DEXI_YOLO_Training_Google_Colab.ipynb`
 
 2. **Enable GPU for faster training:**
    - Go to `Runtime > Change runtime type > Hardware accelerator > GPU`
 
-3. **Upload your 6 base images:**
-   - Use the file upload widget in the notebook
-   - Or drag-drop files into Colab's file browser
-
-4. **Run all cells** - the notebook handles everything automatically!
+3. **Run all cells** - the notebook handles everything automatically!
+   - Training images are already included in the repository
+   - No file uploads needed - just clone and run!
 
 **🚀 Colab Benefits:**
 - ✅ **Free Tesla T4 GPU** (10-20x faster than CPU)
@@ -25,6 +23,7 @@
 - ✅ **12GB RAM + 100GB storage** (plenty for training)
 - ✅ **Pre-installed ML libraries** (PyTorch, OpenCV, etc.)
 - ✅ **Easy sharing** (send link to collaborators)
+- ✅ **Training images included** (no uploads needed)
 - ✅ **Automatic model download** (best.pt and ONNX files)
 
 ## 📊 **Which Notebook Should I Use?**
@@ -51,19 +50,18 @@
 
 2. **Launch the local tutorial:**
    ```bash
-   jupyter notebook YOLO_Training_Tutorial_Local.ipynb
+   jupyter notebook DEXI_YOLO_Training.ipynb
    ```
 
 3. **Follow the interactive guide** that walks you through:
-   - Dataset exploration
-   - Data augmentation (generates 900+ images from 6 originals)  
+   - Dataset exploration (900+ pre-generated images from 6 originals)
    - YOLO training with optimized settings
    - Results analysis and model testing
    - ONNX conversion for deployment
 
 ### **Method 3: Command Line (Advanced Users)**
 
-1. **Generate augmented dataset:**
+1. **Generate additional augmented data (optional - already included):**
    ```bash
    python augment_dataset.py --input train/images/ --count 150
    ```
@@ -78,9 +76,10 @@
    python convert_to_onnx.py --model runs/detect/drone_detection/weights/best.pt
    ```
 
-## Data Augmentation Features
+## Dataset Features
 
-The augmentation script generates variations with:
+The included augmented dataset contains:
+- **900+ training images** (150 per class, generated from 6 base images)
 - **360° rotations** (critical for drone orientation independence)
 - **Scale variations** (0.7x to 1.3x)
 - **Brightness/contrast changes**
@@ -113,8 +112,9 @@ With 150 augmentations per class (900 total images), you should achieve:
 
 ## 📁 Key Files
 
-- `YOLO_Training_Tutorial_Colab.ipynb` - **Google Colab notebook (EASIEST)**
-- `YOLO_Training_Tutorial_Local.ipynb` - **Local Jupyter notebook**
+- `DEXI_YOLO_Training_Google_Colab.ipynb` - **Google Colab notebook (EASIEST)**
+- `DEXI_YOLO_Training.ipynb` - **Local Jupyter notebook**
+- `train/` - **Pre-generated training dataset** (900+ images + labels)
 - `augment_dataset.py` - Data augmentation script
 - `train_yolo.py` - Command-line training script  
 - `convert_to_onnx.py` - ONNX conversion for Pi deployment
