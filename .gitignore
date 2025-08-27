@@ -32,11 +32,9 @@ runs/
 *.pt
 *.onnx
 
-# Dataset files (ignore augmented images but keep originals)
+# Dataset files (ignore augmented images but keep originals and validation set)
 train/images/*_[0-9][0-9][0-9].jpg
 train/labels/*_[0-9][0-9][0-9].txt
-val/images/*
-val/labels/*
 
 # Keep original base images (important for the project)
 !train/images/bird.jpg
