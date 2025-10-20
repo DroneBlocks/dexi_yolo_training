@@ -14,7 +14,7 @@ Collect real-world drone camera images of the 6 COCO classes (bird, car, cat, do
 ## Collection Protocol
 
 ### Setup
-1. Print each of the 6 original images from `train/original_images/`
+1. Print images of the 6 classes (bird, car, cat, dog, motorcycle, truck)
 2. Place images in the recessed building setup (actual deployment scenario)
 3. Ensure drone camera is pointing straight down (matches production)
 
@@ -65,12 +65,26 @@ Save all collected images to:
 ```
 source_data/real_drone_photos/
   ├── bird/
+  │   ├── images/          # Put your .jpg files here
+  │   └── labels/          # Labels will be created here
   ├── car/
+  │   ├── images/
+  │   └── labels/
   ├── cat/
+  │   ├── images/
+  │   └── labels/
   ├── dog/
+  │   ├── images/
+  │   └── labels/
   ├── motorcycle/
+  │   ├── images/
+  │   └── labels/
   └── truck/
+      ├── images/
+      └── labels/
 ```
+
+**Important**: Place your collected images in the `images/` subdirectory for each class.
 
 ## Quality Checklist
 - [ ] Image is in focus
@@ -94,9 +108,44 @@ source_data/real_drone_photos/
 
 **Best Practice**: When possible, collect majority of photos on the **actual deployment building**
 
+## Labeling Instructions
+
+### How to Label Images
+
+Use the interactive labeling tool to create YOLO format bounding boxes:
+
+```bash
+# Label motorcycle images (auto-detects class from directory name)
+python3 label_images.py source_data/real_drone_photos/motorcycle
+
+# Label other classes
+python3 label_images.py source_data/real_drone_photos/bird
+python3 label_images.py source_data/real_drone_photos/car
+python3 label_images.py source_data/real_drone_photos/cat
+python3 label_images.py source_data/real_drone_photos/dog
+python3 label_images.py source_data/real_drone_photos/truck
+```
+
+### Labeling Controls
+- **Click and drag** - Draw bounding box around object
+- **n** - Next image (auto-saves current labels)
+- **p** - Previous image (auto-saves current labels)
+- **c** - Clear all labels for current image
+- **u** - Undo last bounding box
+- **s** - Save labels manually
+- **q** - Quit (auto-saves)
+- **0-5** - Change class:
+  - 0=car, 1=motorcycle, 2=truck
+  - 3=bird, 4=cat, 5=dog
+
+The labeling script will:
+1. Open the first motorcycle image
+2. Auto-detect "motorcycle" as the class (class ID 1)
+3. Allow you to draw bounding boxes around motorcycles
+4. Save labels to `source_data/real_drone_photos/motorcycle/labels/`
+
 ## Next Steps
-After collection:
-1. Label images using `label_images.py`
-2. Train model with combined dataset: `python train_with_real_data.py`
-3. Validate predictions on real drone photos
-4. Iterate based on failure cases
+After collection and labeling:
+1. Train model with combined dataset: `python train_with_real_data.py`
+2. Validate predictions on real drone photos
+3. Iterate based on failure cases
