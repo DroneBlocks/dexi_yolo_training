@@ -192,12 +192,14 @@ class YOLODatasetAugmenter:
                 new_width = new_width * new_w / w
                 new_height = new_height * new_h / h
 
-                # Check if bbox is still in bounds
-                if (0 <= new_x_center <= 1 and 0 <= new_y_center <= 1 and
-                    new_width > 0.01 and new_height > 0.01):
-                    # Clip to bounds
-                    new_x_center = max(0, min(1, new_x_center))
-                    new_y_center = max(0, min(1, new_y_center))
+                # Clip to bounds and check validity
+                new_x_center = max(0, min(1, new_x_center))
+                new_y_center = max(0, min(1, new_y_center))
+                new_width = max(0, min(1, new_width))
+                new_height = max(0, min(1, new_height))
+
+                # Only keep if bbox is still reasonable
+                if new_width > 0.01 and new_height > 0.01:
                     scaled_bboxes.append((class_id, new_x_center, new_y_center, new_width, new_height))
 
             return cropped, scaled_bboxes
