@@ -1,30 +1,33 @@
 # DEXI Object Detection Training
 
-**Objective**: Train YOLOv8 to detect objects from DEXI's camera using a blend of augmented and real-world data.
+**Objective**: Train YOLOv8 to detect objects from DEXI's camera using manually labeled source images with data augmentation.
 
 **Status**: Self-contained repository with all scripts and data for running complete training workflow.
 
 ## Quick Start
 
-For users who understand the workflow and want to train quickly:
+For users who want to train from scratch:
 
 ```bash
-# 1. Generate augmented dataset
-python3 augment_dataset.py
+# 1. Start fresh (optional - removes old training data)
+python clean.py
 
-# 2. Collect and label real DEXI photos (30-50 per class)
-python3 label_images.py source_data/raw_drone_photos/<class> --class <class>
+# 2. Generate augmented dataset from labeled originals
+python augment_dataset.py --count 100
 
-# 3. Train with combined dataset
-python3 train_with_real_data.py --epochs 50 --device mps  # or cuda/cpu
+# 3. (Optional) View augmented images to verify quality
+python view_augmented.py train  # Press 'n' for next, 'q' to quit
 
-# 4. Validate predictions
+# 4. Train model
+python train_with_real_data.py --epochs 50 --device mps  # or cuda/cpu
+
+# 5. Validate on real drone photos
 yolo predict model=results/with_real_data/weights/best.pt \
     source=source_data/real_drone_photos/<class>/images \
     conf=0.25 save=True
 
-# 5. Export to ONNX for deployment
-python3 -c "from ultralytics import YOLO; YOLO('results/with_real_data/weights/best.pt').export(format='onnx', imgsz=320)"
+# 6. Export to ONNX for DEXI deployment
+yolo export model=results/with_real_data/weights/best.pt format=onnx imgsz=320
 ```
 
 Read on for detailed explanations and troubleshooting.
@@ -59,19 +62,53 @@ Training with both types of data allows the model to leverage general object rec
 
 ## Training Workflow
 
-### Step 1: Generate Augmented Dataset
+### Step 0: Clean Previous Training (Optional)
 
-Create baseline augmented dataset from the 6 original images:
+If you want to start completely fresh:
 
 ```bash
-python3 augment_dataset.py
+python clean.py
 ```
 
-This creates:
-- `train/images/` - Augmented training images
+This removes:
+- `train/` and `val/` - Augmented datasets
+- `combined/` - Combined training data
+- `results/` - Previous training results
+- `*.pt` - Trained model files
+
+**Source data is preserved** - your original labeled images and real drone photos are safe.
+
+### Step 1: Generate Augmented Dataset
+
+Create augmented dataset from the 6 manually labeled original images:
+
+```bash
+# Default: 100 augmentations per image
+python augment_dataset.py
+
+# Or specify custom count
+python augment_dataset.py --count 200  # More data, longer training
+```
+
+**What happens:**
+- Reads original images from `source_data/original_images/<class>/images/`
+- Reads labels from `source_data/original_images/<class>/labels/`
+- Applies transformations: rotation (0-360°), scaling (0.25-1.3x), brightness, contrast
+- **Properly transforms bounding boxes** through all augmentations
+- Creates 80/20 train/val split
+
+**Output:**
+- `train/images/` - Training images (80% of augmentations)
 - `train/labels/` - Corresponding YOLO labels
-- `val/images/` - Augmented validation images
+- `val/images/` - Validation images (20% of augmentations)
 - `val/labels/` - Corresponding YOLO labels
+
+**Verify augmentation quality:**
+```bash
+python view_augmented.py train   # Browse training images
+python view_augmented.py val     # Browse validation images
+# Press 'n' for next, 'p' for previous, 'q' to quit
+```
 
 ### Step 2: Collect Real DEXI Photos
 
@@ -138,33 +175,64 @@ yolo predict model=results/with_real_data/weights/best.pt \
 3. **Re-label and train** - Add new photos and retrain
 4. **Validate again** - Check if failures are resolved
 
-## Deployment Pipeline
+## Step 6: Export to ONNX for Deployment
 
-After training, deploy to DEXI:
+After training, convert your PyTorch model to ONNX format for deployment on DEXI's Raspberry Pi CM4.
 
-```python
-# Convert to ONNX for DEXI's Raspberry Pi
-from ultralytics import YOLO
+### Export to ONNX
 
-model = YOLO('results/with_real_data/weights/best.pt')
-model.export(format='onnx', imgsz=320)
+```bash
+# Using YOLO CLI (recommended)
+yolo export model=results/with_real_data/weights/best.pt format=onnx imgsz=320
 ```
 
-Use in DEXI's ROS2 node:
-```python
-import onnxruntime as ort
-# Load and run inference on Raspberry Pi
+This creates `results/with_real_data/weights/best.onnx` optimized for 320x320 input.
+
+### Deploy to DEXI
+
+1. Copy ONNX model to DEXI repository:
+```bash
+cp results/with_real_data/weights/best.onnx ../dexi_yolo/models/best_optimized.onnx
 ```
 
-## Files
+2. DEXI's ROS2 node will automatically use it:
+```bash
+# On Raspberry Pi
+ros2 launch dexi_yolo yolo_onnx_launch.py
+```
 
-- `README.md` - This file
-- `DATA_COLLECTION_GUIDE.md` - Photo collection protocol
-- `train_with_real_data.py` - Training script with combined dataset
-- `augment_dataset.py` - Generate augmented COCO images
-- `label_images.py` - Interactive labeling tool
-- `source_data/` - Data storage directory
-- `results/` - Training results and models
+### Preprocessing Consistency
+
+**Important:** DEXI's ONNX node uses `cv2.INTER_LINEAR` (bilinear interpolation) for image resizing, which matches the training preprocessing. This ensures consistent performance between training and deployment.
+
+Both training and inference use:
+```python
+cv2.resize(image, (320, 320), interpolation=cv2.INTER_LINEAR)
+```
+
+## Repository Structure
+
+### Scripts
+- `augment_dataset.py` - Generate augmented training data from labeled originals
+- `train_with_real_data.py` - Train model with augmented + real drone data
+- `label_images.py` - Interactive tool for labeling images (YOLO format)
+- `view_augmented.py` - Browse augmented images to verify quality
+- `clean.py` - Remove all training artifacts to start fresh
+
+### Data Directories
+- `source_data/original_images/<class>/` - 6 manually labeled source images
+  - `images/` - Original images (bird.jpg, car.jpg, etc.)
+  - `labels/` - YOLO format labels (bird.txt, car.txt, etc.)
+- `source_data/real_drone_photos/<class>/` - Real drone footage (optional)
+  - `images/` - Photos from DEXI
+  - `labels/` - Corresponding labels
+- `train/` - Generated augmented training data (created by augment_dataset.py)
+- `val/` - Generated augmented validation data (created by augment_dataset.py)
+- `results/` - Training outputs, metrics, and trained models
+
+### Documentation
+- `README.md` - This file (complete training workflow)
+- `DATA_COLLECTION_GUIDE.md` - Protocol for collecting real drone photos
 
 ## Understanding Training Metrics
 
