@@ -190,7 +190,7 @@ class InteractiveLabelTool:
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
 
             class_name = self.class_names[class_id] if class_id < len(self.class_names) else f'class_{class_id}'
-            cv2.putText(img, class_name, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(img, class_name, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
         # Draw current rectangle being drawn
         if self.current_rect:
@@ -224,13 +224,13 @@ class InteractiveLabelTool:
 
             # Add info text overlay
             info_text = f"Image {self.current_idx + 1}/{len(self.image_files)}: {image_path.name}"
-            cv2.putText(display_img, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(display_img, info_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
             class_text = f"Class: {self.current_class} ({self.class_names[self.current_class]})"
-            cv2.putText(display_img, class_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(display_img, class_text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
             labels_text = f"Boxes: {len(self.labels)}"
-            cv2.putText(display_img, labels_text, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            cv2.putText(display_img, labels_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
 
             cv2.imshow('Interactive Labeler', display_img)
 
