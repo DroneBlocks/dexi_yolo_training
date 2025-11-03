@@ -29,8 +29,6 @@ ENV/
 
 # YOLO Training outputs
 runs/
-*.onnx
-*.pt
 *.weights
 
 # Generated datasets (augmented data)
