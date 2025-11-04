@@ -45,6 +45,7 @@ class InteractiveLabelTool:
         self.start_point = None
         self.current_rect = None
         self.labels = []
+        self.mouse_pos = None  # Track mouse position for crosshair
 
         # Class settings
         self.class_names = ['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog']
@@ -99,12 +100,16 @@ class InteractiveLabelTool:
 
     def mouse_callback(self, event, x, y, flags, param):
         """Handle mouse events for drawing bounding boxes"""
+        # Always update mouse position for crosshair
+        self.mouse_pos = (x, y)
+
         if event == cv2.EVENT_LBUTTONDOWN:
             self.drawing = True
             self.start_point = (x, y)
 
-        elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
-            self.current_rect = (self.start_point[0], self.start_point[1], x, y)
+        elif event == cv2.EVENT_MOUSEMOVE:
+            if self.drawing:
+                self.current_rect = (self.start_point[0], self.start_point[1], x, y)
 
         elif event == cv2.EVENT_LBUTTONUP:
             if self.drawing and self.start_point:
@@ -196,6 +201,16 @@ class InteractiveLabelTool:
         if self.current_rect:
             x1, y1, x2, y2 = self.current_rect
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        # Draw crosshair at mouse position (only when not drawing)
+        if self.mouse_pos and not self.drawing:
+            mx, my = self.mouse_pos
+            # Draw dotted vertical line
+            for y in range(0, h, 10):  # 10 pixel gaps for dotted effect
+                cv2.line(img, (mx, y), (mx, min(y + 5, h)), (255, 255, 255), 1)
+            # Draw dotted horizontal line
+            for x in range(0, w, 10):  # 10 pixel gaps for dotted effect
+                cv2.line(img, (x, my), (min(x + 5, w), my), (255, 255, 255), 1)
 
         return img
 
