@@ -226,6 +226,8 @@ cv2.resize(image, (320, 320), interpolation=cv2.INTER_LINEAR)
 - `source_data/real_drone_photos/<class>/` - Real drone footage (optional)
   - `images/` - Photos from DEXI
   - `labels/` - Corresponding labels
+- `source_data/avr_<year>/` - Per-season data from AVR 2026 on. The two
+  directories above are AVR 2025. See [source_data/README.md](source_data/README.md).
 - `train/` - Generated augmented training data (created by augment_dataset.py)
 - `val/` - Generated augmented validation data (created by augment_dataset.py)
 - `results/` - Training outputs, metrics, and trained models
