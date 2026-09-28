@@ -54,16 +54,28 @@ the same as the 119/120 `avr-yolo` measured on `testdata/real_gasoline`, which
 was a printed card on an Arducam at 1280x720. These are cans, on the aircraft's
 own 640x480 lens.
 
+69 of the 142 frames hold two or more objects, which is why the images are one
+flat set rather than a directory per class: every object in a frame gets a box,
+or the unmarked ones train as background.
+
 ## Next
 
-1. Sort `raw/` into `real_drone_photos/<class>/images/`.
-2. Label with `label_images.py`.
-3. Retrain, as a separate change.
+```bash
+pip install -r requirements.txt
+python3 label_images.py source_data/avr_2026/captures --class gasoline
+```
 
-Sort from the artwork, not from model predictions. `avr-yolo` filed 120 frames
-as negatives during 2026 training and every one contained a wheat card; they
-would have taught the model that wheat artwork is background across a quarter of
-the dataset. Render a labeled contact sheet before anything trains on it.
+Labels land in `captures/labels/`, one `.txt` per image. Number keys switch
+class mid-image, `n` advances and saves, `q` quits and saves.
 
-Hold a slice back. If all 142 go into training, nothing real is left to measure
-against.
+Then retrain, as a separate change.
+
+Work from the artwork, not from what a model predicts. `avr-yolo` filed 120
+frames as negatives during 2026 training and every one contained a wheat card;
+they would have taught the model that wheat artwork is background across a
+quarter of the dataset. Render a labeled contact sheet before anything trains
+on it.
+
+Hold a slice back, split by capture run rather than at random. These frames are
+consecutive, so neighbors are near-duplicates and a random split leaks. If all
+142 train, nothing real is left to measure against.
