@@ -200,8 +200,11 @@ class InteractiveLabelTool:
             x2 = int((x_center + width/2) * w)
             y2 = int((y_center + height/2) * h)
 
-            # Different colors for different classes
-            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+            # One color per class. Ten entries so the 2026 set does not wrap and
+            # give two classes the same box color.
+            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+                      (255, 0, 255), (0, 255, 255), (255, 128, 0), (128, 0, 255),
+                      (0, 128, 255), (128, 255, 0)]
             color = colors[class_id % len(colors)]
 
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
