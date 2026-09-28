@@ -6,41 +6,53 @@ in flight.
 
 Contents: stickers seated in soup cans with a visible rim, barn cards recessed
 behind a roof opening, black field surface with glare, gym floor with overhead
-lights. Varied scale, rotation and motion blur.
+lights. Varied scale, rotation and motion blur. Barrels and barns only — no
+bridge or blackout cards in this set.
 
 ## Why these matter
 
-The shipped 2026 model was trained on **synthetic composites**: print artwork
-pasted onto real background photographs through a random homography. The
-backgrounds were real; the artwork was always flat.
+The `avr-yolo` generator is not naive. Its 2026 dataset is about 60% real-backed
+already: 24% of frames are pure real photographs used as negatives, and another
+26% paste the artwork onto real background photos through a homography with
+occlusion, truncation and varied blend seams. The remaining 40% are renders of
+the CAD field through the camera's measured intrinsics, and those renders do
+model the physical mounts — a 3 in can mouth with the image 4.5 in down a tin
+body, the barn shafts, the bridge cups.
 
-Nothing in training had a can rim, a curved inset disc, specular glare, or a
-card in shadow behind a roof. These are the first real photographs of mounted
-stickers in the set.
+What the set has never contained is **a real photograph carrying a positive
+label**. Every labeled box in training is rendered or pasted. Real photographs
+appear only as backgrounds and as "nothing here."
+
+That is the leg these images add, and it is the same leg the 2025 pipeline had:
+augmented artwork plus real drone photos, blended.
 
 ## Where the current model stands on them
 
-Scored with `avr2026n320.onnx` at its 0.45 floor, top detection per image:
+Scored with `avr2026n320_v6/best.onnx` at the deployed 0.45 floor, per-class NMS,
+counting every surviving box:
 
 ```
-at least one detection   124 / 142  (87%)
-nothing above 0.45        18 / 142  (13%)
+images 142   with at least one detection 124 (87%)
 
-toxic_fluid   30  med 0.79      water_barrel  20  med 0.79
-wheat_barrel  27  med 0.81      water_barn    20  med 0.87
-wheat_barn    25  med 0.82      gasoline       2  med 0.77
+class           boxes  images  best conf  in 0.30-0.45
+wheat_barrel       54      53       0.88             4
+water_barrel       60      52       0.86             8
+toxic_fluid        59      58       0.88             5
+wheat_barn         29      29       0.91             0
+water_barn         26      25       0.92             2
+gasoline           21      21       0.82             8
+bridge_*            0       0       0.32             1
+blackout            0       0       0.06             0
 ```
 
-These are unlabeled, so that is a firing rate, not accuracy. Some frames are
-legitimately empty.
+Unlabeled, so this is a firing rate, not accuracy. Bridge and blackout are zero
+because those cards are not in these photos.
 
-Two things it does show:
-
-- **gasoline is the weak class on real mounts.** Two detections against 20-30
-  for everything else, while gasoline cans appear plainly among the misses.
-  One clean, centered, well-lit gasoline can scores **0.22**.
-- **Several misses sit just under the line**, 0.40 to 0.44. An unambiguous
-  water_barrel scores 0.44 against a 0.45 threshold.
+The one asymmetry worth chasing: **gasoline fires on 21 images against 52-58 for
+the other three barrel classes, with 8 more sitting in 0.30-0.45.** That is not
+the same as the 119/120 `avr-yolo` measured on `testdata/real_gasoline`, which
+was a printed card on an Arducam at 1280x720. These are cans, on the aircraft's
+own 640x480 lens.
 
 ## Next
 
@@ -48,11 +60,10 @@ Two things it does show:
 2. Label with `label_images.py`.
 3. Retrain, as a separate change.
 
-Sort from the artwork, not from model predictions. 120 frames were misfiled as
-negatives during 2026 training and every one contained a wheat card; they would
-have taught the model that wheat artwork is background across a quarter of the
-dataset.
+Sort from the artwork, not from model predictions. `avr-yolo` filed 120 frames
+as negatives during 2026 training and every one contained a wheat card; they
+would have taught the model that wheat artwork is background across a quarter of
+the dataset. Render a labeled contact sheet before anything trains on it.
 
-The misses and the 0.40-0.44 near-misses are worth labeling first. Labeling all
-142 is hours; labeling the ~30 that the model gets wrong is an afternoon and
-targets the actual gap.
+Hold a slice back. If all 142 go into training, nothing real is left to measure
+against.
