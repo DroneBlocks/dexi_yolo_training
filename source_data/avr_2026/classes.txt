@@ -1,0 +1,10 @@
+wheat_barrel
+water_barrel
+gasoline
+toxic_fluid
+wheat_barn
+water_barn
+bridge_1line
+bridge_2line
+bridge_3line
+blackout

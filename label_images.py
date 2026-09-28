@@ -15,7 +15,22 @@ from pathlib import Path
 import argparse
 
 class InteractiveLabelTool:
-    def __init__(self, images_dir, default_class='dog'):
+    def _load_classes(self):
+        """Class names in training order.
+
+        Walk up from the directory being labeled looking for a classes.txt, so
+        each season names its own classes. Falls back to the 2025 list, which
+        predates the file.
+        """
+        for d in [self.class_dir] + list(self.class_dir.parents):
+            f = d / 'classes.txt'
+            if f.exists():
+                names = [ln.strip() for ln in f.read_text().splitlines() if ln.strip()]
+                print(f"\U0001f4c4 Classes from {f}: {len(names)}")
+                return names
+        return ['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog']
+
+    def __init__(self, images_dir, default_class=None, start=1, only_labeled=False):
         self.class_dir = Path(images_dir)
 
         if not self.class_dir.exists():
@@ -38,7 +53,15 @@ class InteractiveLabelTool:
             raise FileNotFoundError(f"No images found in: {self.images_dir}\n" +
                                   f"Place images in {self.images_dir}/")
 
-        self.current_idx = 0
+        if only_labeled:
+            kept = [p for p in self.image_files
+                    if (self.labels_dir / (p.stem + '.txt')).exists()]
+            if not kept:
+                raise SystemExit("--only-labeled: nothing in %s has labels yet" % self.labels_dir)
+            print(f"\U0001f50e --only-labeled: {len(kept)} of {len(self.image_files)} images")
+            self.image_files = kept
+
+        self.current_idx = min(max(start, 1), len(self.image_files)) - 1
 
         # Drawing state
         self.drawing = False
@@ -47,40 +70,36 @@ class InteractiveLabelTool:
         self.labels = []
         self.mouse_pos = None  # Track mouse position for crosshair
 
-        # Class settings
-        self.class_names = ['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog']
+        # Class settings. A season directory may carry a classes.txt listing its
+        # classes in training order; without one, the 2025 list applies.
+        self.class_names = self._load_classes()
 
-        # Set default class based on directory name or argument
-        # Check the class directory name (parent of images/), not "images" itself
+        # Starting class: an explicit --class wins, then the directory name.
+        # A wrong starting class is recoverable with the number keys; a silent
+        # fallback is not, so an unrecognised --class is an error.
         dir_name = self.class_dir.name.lower()
         self.current_class = None
 
-        # First try to auto-detect from directory name
-        for idx, name in enumerate(self.class_names):
-            if name in dir_name:
-                self.current_class = idx
-                print(f"🔍 Auto-detected class from directory: {name}")
-                break
-
-        # If not found in directory name, use the --class argument
-        if self.current_class is None:
-            for idx, name in enumerate(self.class_names):
-                if name == default_class.lower():
-                    self.current_class = idx
-                    print(f"📝 Using class from --class argument: {name}")
-                    break
-
-        # Fallback to dog if still not set
-        if self.current_class is None:
-            self.current_class = 5  # dog
-            print(f"⚠️  No class detected, defaulting to: dog")
+        if default_class:
+            if default_class.lower() not in self.class_names:
+                raise SystemExit(
+                    "Unknown class %r. This set has: %s"
+                    % (default_class, ', '.join(self.class_names)))
+            self.current_class = self.class_names.index(default_class.lower())
+            print(f"📝 Starting class from --class: {self.class_names[self.current_class]}")
+        elif dir_name in self.class_names:
+            self.current_class = self.class_names.index(dir_name)
+            print(f"🔍 Auto-detected class from directory: {dir_name}")
+        else:
+            self.current_class = 0
+            print(f"📝 Starting class: {self.class_names[0]} (press a number key to change)")
 
         print(f"\n{'='*70}")
         print(f"Interactive YOLO Labeler")
         print(f"{'='*70}")
         print(f"Directory: {self.images_dir}")
         print(f"Images found: {len(self.image_files)}")
-        print(f"Labels will be saved to: {self.images_dir} (same directory)")
+        print(f"Labels will be saved to: {self.labels_dir}")
         print(f"\n{'='*70}")
         print("CONTROLS:")
         print(f"{'='*70}")
@@ -91,9 +110,9 @@ class InteractiveLabelTool:
         print("  u                     - Undo last box")
         print("  s                     - Save labels manually")
         print("  q                     - Quit (auto-saves)")
-        print("  0-5                   - Change class:")
-        print("                          0=car, 1=motorcycle, 2=truck")
-        print("                          3=bird, 4=cat, 5=dog")
+        print(f"  0-{len(self.class_names) - 1}                   - Change class:")
+        for idx, name in enumerate(self.class_names):
+            print(f"                          {idx}={name}")
         print(f"{'='*70}")
         print(f"Current class: {self.current_class} ({self.class_names[self.current_class]})")
         print(f"{'='*70}\n")
@@ -144,6 +163,7 @@ class InteractiveLabelTool:
 
         # Add label (class_id, x_center, y_center, width, height)
         self.labels.append((self.current_class, x_center, y_center, width, height))
+        self.touched = True
         print(f"✅ Added {self.class_names[self.current_class]} box (total: {len(self.labels)})")
 
     def load_labels(self, image_path):
@@ -188,8 +208,11 @@ class InteractiveLabelTool:
             x2 = int((x_center + width/2) * w)
             y2 = int((y_center + height/2) * h)
 
-            # Different colors for different classes
-            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+            # One color per class. Ten entries so the 2026 set does not wrap and
+            # give two classes the same box color.
+            colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+                      (255, 0, 255), (0, 255, 255), (255, 128, 0), (128, 0, 255),
+                      (0, 128, 255), (128, 255, 0)]
             color = colors[class_id % len(colors)]
 
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
@@ -228,9 +251,18 @@ class InteractiveLabelTool:
 
         # Load existing labels for this image
         self.labels = self.load_labels(image_path)
+        # Did this visit do anything? Quitting must not stamp an untouched frame
+        # as an empty negative, which is what an empty label file asserts.
+        self.touched = False
 
-        # Create window and set mouse callback
+        # Create window and set mouse callback. Opened at 2x: at native 640x480
+        # one image pixel is one screen pixel, and the resulting mouse slop was
+        # measured at 6-9 px per side, which is 25% too wide on a small sticker.
         cv2.namedWindow('Interactive Labeler', cv2.WINDOW_NORMAL)
+        if not getattr(self, '_sized', False):
+            h0, w0 = self.current_image.shape[:2]
+            cv2.resizeWindow('Interactive Labeler', w0 * 2, h0 * 2)
+            self._sized = True
         cv2.setMouseCallback('Interactive Labeler', self.mouse_callback)
 
         while True:
@@ -252,7 +284,14 @@ class InteractiveLabelTool:
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('q'):
-                self.save_labels(image_path)
+                # `n` means "done with this frame", so it always writes, empty or
+                # not. `q` means "stop", which says nothing about the frame on
+                # screen -- writing an empty file there would assert it holds
+                # nothing when it was never looked at.
+                if self.labels or self.touched:
+                    self.save_labels(image_path)
+                else:
+                    print("↪️  Nothing drawn here, leaving it unlabeled")
                 print("\n👋 Quitting...")
                 return False
             elif key == ord('n'):
@@ -267,16 +306,19 @@ class InteractiveLabelTool:
                 break
             elif key == ord('c'):
                 self.labels.clear()
+                self.touched = True
                 print("🗑️  Cleared all labels for current image")
             elif key == ord('u'):
                 if self.labels:
+                    self.touched = True
                     removed = self.labels.pop()
                     print(f"↩️  Removed last label: {self.class_names[removed[0]]}")
                 else:
                     print("⚠️  No labels to undo")
             elif key == ord('s'):
+                self.touched = True
                 self.save_labels(image_path)
-            elif ord('0') <= key <= ord('5'):
+            elif ord('0') <= key <= ord('9') and key - ord('0') < len(self.class_names):
                 self.current_class = key - ord('0')
                 print(f"🔄 Changed to class {self.current_class} ({self.class_names[self.current_class]})")
 
@@ -295,11 +337,8 @@ class InteractiveLabelTool:
         print(f"{'='*70}")
         print(f"Images: {self.images_dir}")
         print(f"Labels: {self.labels_dir}")
-        print(f"\nNext steps:")
-        print(f"1. Copy labeled data to real_drone_photos (images + labels):")
-        print(f"   cp -r {self.class_dir}/images {self.class_dir}/labels source_data/real_drone_photos/{self.class_dir.name}/")
-        print(f"2. Run training:")
-        print(f"   python3 train_with_real_data.py")
+        done = len(list(self.labels_dir.glob('*.txt')))
+        print(f"\nLabeled {done} of {len(self.image_files)} images.")
         print(f"{'='*70}\n")
 
 def main():
@@ -327,14 +366,18 @@ Controls:
     )
     parser.add_argument('directory', type=str,
                        help='Directory containing images to label')
-    parser.add_argument('--class', '-c', dest='default_class', type=str, default='dog',
-                       choices=['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog'],
-                       help='Class to label (auto-detected from directory name if not specified)')
+    parser.add_argument('--class', '-c', dest='default_class', type=str, default=None,
+                       help='Starting class (validated against the set\'s classes.txt)')
+    parser.add_argument('--start', '-s', type=int, default=1,
+                       help='Open at this image number instead of the first')
+    parser.add_argument('--only-labeled', action='store_true',
+                       help='Visit only images that already have a label file')
 
     args = parser.parse_args()
 
     try:
-        labeler = InteractiveLabelTool(args.directory, args.default_class)
+        labeler = InteractiveLabelTool(args.directory, args.default_class,
+                                       start=args.start, only_labeled=args.only_labeled)
         labeler.run()
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
