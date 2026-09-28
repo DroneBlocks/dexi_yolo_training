@@ -30,7 +30,7 @@ class InteractiveLabelTool:
                 return names
         return ['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog']
 
-    def __init__(self, images_dir, default_class='dog'):
+    def __init__(self, images_dir, default_class=None, start=1, only_labeled=False):
         self.class_dir = Path(images_dir)
 
         if not self.class_dir.exists():
@@ -53,7 +53,15 @@ class InteractiveLabelTool:
             raise FileNotFoundError(f"No images found in: {self.images_dir}\n" +
                                   f"Place images in {self.images_dir}/")
 
-        self.current_idx = 0
+        if only_labeled:
+            kept = [p for p in self.image_files
+                    if (self.labels_dir / (p.stem + '.txt')).exists()]
+            if not kept:
+                raise SystemExit("--only-labeled: nothing in %s has labels yet" % self.labels_dir)
+            print(f"\U0001f50e --only-labeled: {len(kept)} of {len(self.image_files)} images")
+            self.image_files = kept
+
+        self.current_idx = min(max(start, 1), len(self.image_files)) - 1
 
         # Drawing state
         self.drawing = False
@@ -247,8 +255,14 @@ class InteractiveLabelTool:
         # as an empty negative, which is what an empty label file asserts.
         self.touched = False
 
-        # Create window and set mouse callback
+        # Create window and set mouse callback. Opened at 2x: at native 640x480
+        # one image pixel is one screen pixel, and the resulting mouse slop was
+        # measured at 6-9 px per side, which is 25% too wide on a small sticker.
         cv2.namedWindow('Interactive Labeler', cv2.WINDOW_NORMAL)
+        if not getattr(self, '_sized', False):
+            h0, w0 = self.current_image.shape[:2]
+            cv2.resizeWindow('Interactive Labeler', w0 * 2, h0 * 2)
+            self._sized = True
         cv2.setMouseCallback('Interactive Labeler', self.mouse_callback)
 
         while True:
@@ -354,11 +368,16 @@ Controls:
                        help='Directory containing images to label')
     parser.add_argument('--class', '-c', dest='default_class', type=str, default=None,
                        help='Starting class (validated against the set\'s classes.txt)')
+    parser.add_argument('--start', '-s', type=int, default=1,
+                       help='Open at this image number instead of the first')
+    parser.add_argument('--only-labeled', action='store_true',
+                       help='Visit only images that already have a label file')
 
     args = parser.parse_args()
 
     try:
-        labeler = InteractiveLabelTool(args.directory, args.default_class)
+        labeler = InteractiveLabelTool(args.directory, args.default_class,
+                                       start=args.start, only_labeled=args.only_labeled)
         labeler.run()
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
