@@ -155,6 +155,7 @@ class InteractiveLabelTool:
 
         # Add label (class_id, x_center, y_center, width, height)
         self.labels.append((self.current_class, x_center, y_center, width, height))
+        self.touched = True
         print(f"✅ Added {self.class_names[self.current_class]} box (total: {len(self.labels)})")
 
     def load_labels(self, image_path):
@@ -239,6 +240,9 @@ class InteractiveLabelTool:
 
         # Load existing labels for this image
         self.labels = self.load_labels(image_path)
+        # Did this visit do anything? Quitting must not stamp an untouched frame
+        # as an empty negative, which is what an empty label file asserts.
+        self.touched = False
 
         # Create window and set mouse callback
         cv2.namedWindow('Interactive Labeler', cv2.WINDOW_NORMAL)
@@ -263,7 +267,14 @@ class InteractiveLabelTool:
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('q'):
-                self.save_labels(image_path)
+                # `n` means "done with this frame", so it always writes, empty or
+                # not. `q` means "stop", which says nothing about the frame on
+                # screen -- writing an empty file there would assert it holds
+                # nothing when it was never looked at.
+                if self.labels or self.touched:
+                    self.save_labels(image_path)
+                else:
+                    print("↪️  Nothing drawn here, leaving it unlabeled")
                 print("\n👋 Quitting...")
                 return False
             elif key == ord('n'):
@@ -278,14 +289,17 @@ class InteractiveLabelTool:
                 break
             elif key == ord('c'):
                 self.labels.clear()
+                self.touched = True
                 print("🗑️  Cleared all labels for current image")
             elif key == ord('u'):
                 if self.labels:
+                    self.touched = True
                     removed = self.labels.pop()
                     print(f"↩️  Removed last label: {self.class_names[removed[0]]}")
                 else:
                     print("⚠️  No labels to undo")
             elif key == ord('s'):
+                self.touched = True
                 self.save_labels(image_path)
             elif ord('0') <= key <= ord('9') and key - ord('0') < len(self.class_names):
                 self.current_class = key - ord('0')
