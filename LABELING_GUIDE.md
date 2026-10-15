@@ -17,6 +17,7 @@ python3 label_images.py source_data/avr_2026/captures --start 28   # resume at i
 | c | Clear every box on this image |
 | n / p | Next / previous image (saves) |
 | q | Quit (saves) |
+| h | Hide or show the info panel |
 
 AVR 2026 classes:
 
@@ -31,7 +32,7 @@ AVR 2026 classes:
 ## The rules
 
 1. **Box every target in the frame, every time.** One image, all classes, one pass. An unboxed target tells the model "this is background", and in a test set it turns a correct detection into a false alarm.
-2. **Box the artwork, not the holder.** For a barrel, box the printed sticker inside the can rim. For a barn, box the card you can see through the roof opening.
+2. **Box the top of the target, not its body.** For a barrel, the box touches the outside edge of the can's rim, sticker and rim included, but never the can's side or shadow. For a barn, box the card you can see through the roof opening.
 3. **Tight boxes.** Every edge touches the artwork, with no gap and nothing cut off.
 4. **Cut off at the frame edge?** Box what you can see if you could name the class from it alone (about a third or more visible). If you can't tell what it is, leave it unboxed.
 5. **Can't tell which class?** Skip the image (press `n` with no boxes) and write its name down. Don't guess.

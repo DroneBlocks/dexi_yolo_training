@@ -30,7 +30,10 @@ class InteractiveLabelTool:
                 return names
         return ['car', 'motorcycle', 'truck', 'bird', 'cat', 'dog']
 
-    def __init__(self, images_dir, default_class=None, start=1, only_labeled=False):
+    def __init__(self, images_dir, default_class=None, start=1, only_labeled=False, scale=1.5):
+        # Window zoom. 2x put the bottom rows of a 640x480 frame off a laptop
+        # screen; 1.5x (960x720) fits a 1512x982 MacBook display.
+        self.scale = scale
         self.class_dir = Path(images_dir)
 
         if not self.class_dir.exists():
@@ -119,6 +122,12 @@ class InteractiveLabelTool:
 
     def mouse_callback(self, event, x, y, flags, param):
         """Handle mouse events for drawing bounding boxes"""
+        # Clamp to the image so a drag that overshoots the edge snaps to it.
+        # Objects cut off by the frame need a box that ends exactly there.
+        if getattr(self, 'current_image', None) is not None:
+            h, w = self.current_image.shape[:2]
+            x, y = min(max(x, 0), w - 1), min(max(y, 0), h - 1)
+
         # Always update mouse position for crosshair
         self.mouse_pos = (x, y)
 
@@ -218,7 +227,11 @@ class InteractiveLabelTool:
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
 
             class_name = self.class_names[class_id] if class_id < len(self.class_names) else f'class_{class_id}'
-            cv2.putText(img, class_name, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            (tw, th), _ = cv2.getTextSize(class_name, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+            cv2.rectangle(img, (x1, y1 - th - 6), (x1 + tw + 4, y1), color, -1)
+            ink = (0, 0, 0) if sum(color) > 380 else (255, 255, 255)
+            cv2.putText(img, class_name, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                        ink, 1, cv2.LINE_AA)
 
         # Draw current rectangle being drawn
         if self.current_rect:
@@ -255,13 +268,14 @@ class InteractiveLabelTool:
         # as an empty negative, which is what an empty label file asserts.
         self.touched = False
 
-        # Create window and set mouse callback. Opened at 2x: at native 640x480
+        # Create window and set mouse callback. Opened zoomed (--scale): at native 640x480
         # one image pixel is one screen pixel, and the resulting mouse slop was
         # measured at 6-9 px per side, which is 25% too wide on a small sticker.
         cv2.namedWindow('Interactive Labeler', cv2.WINDOW_NORMAL)
         if not getattr(self, '_sized', False):
             h0, w0 = self.current_image.shape[:2]
-            cv2.resizeWindow('Interactive Labeler', w0 * 2, h0 * 2)
+            scale = self.scale
+            cv2.resizeWindow('Interactive Labeler', int(w0 * scale), int(h0 * scale))
             self._sized = True
         cv2.setMouseCallback('Interactive Labeler', self.mouse_callback)
 
@@ -270,14 +284,21 @@ class InteractiveLabelTool:
             display_img = self.draw_labels(self.current_image)
 
             # Add info text overlay
-            info_text = f"Image {self.current_idx + 1}/{len(self.image_files)}: {image_path.name}"
-            cv2.putText(display_img, info_text, (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
-
-            class_text = f"Class: {self.current_class} ({self.class_names[self.current_class]})"
-            cv2.putText(display_img, class_text, (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
-
-            labels_text = f"Boxes: {len(self.labels)}"
-            cv2.putText(display_img, labels_text, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+            # White on a dark panel: bare green text vanished against the
+            # white gym floor.
+            lines = [
+                f"Image {self.current_idx + 1}/{len(self.image_files)}: {image_path.name}",
+                f"Class: {self.current_class} ({self.class_names[self.current_class]})",
+                f"Boxes: {len(self.labels)}",
+            ]
+            # 'h' hides it, for targets sitting under the panel.
+            if not getattr(self, 'hide_info', False):
+                panel = display_img.copy()
+                cv2.rectangle(panel, (0, 0), (330, 70), (0, 0, 0), -1)
+                cv2.addWeighted(panel, 0.65, display_img, 0.35, 0, display_img)
+                for i, text in enumerate(lines):
+                    cv2.putText(display_img, text, (8, 18 + i * 20), cv2.FONT_HERSHEY_SIMPLEX,
+                                0.45, (255, 255, 255), 1, cv2.LINE_AA)
 
             cv2.imshow('Interactive Labeler', display_img)
 
@@ -294,6 +315,8 @@ class InteractiveLabelTool:
                     print("↪️  Nothing drawn here, leaving it unlabeled")
                 print("\n👋 Quitting...")
                 return False
+            elif key == ord('h'):
+                self.hide_info = not getattr(self, 'hide_info', False)
             elif key == ord('n'):
                 self.save_labels(image_path)
                 self.current_idx = min(self.current_idx + 1, len(self.image_files) - 1)
@@ -361,7 +384,8 @@ Controls:
   'n' - Next image    'p' - Previous image
   'c' - Clear labels  'u' - Undo last box
   's' - Save          'q' - Quit
-  '0-5' - Change class (0=car, 1=motorcycle, 2=truck, 3=bird, 4=cat, 5=dog)
+  'h' - Hide/show the info panel
+  '0-9' - Change class (names come from the season's classes.txt)
         """
     )
     parser.add_argument('directory', type=str,
@@ -370,6 +394,8 @@ Controls:
                        help='Starting class (validated against the set\'s classes.txt)')
     parser.add_argument('--start', '-s', type=int, default=1,
                        help='Open at this image number instead of the first')
+    parser.add_argument('--scale', type=float, default=1.5,
+                        help='Window zoom (default 1.5). Lower it if the bottom of the image is cut off.')
     parser.add_argument('--only-labeled', action='store_true',
                        help='Visit only images that already have a label file')
 
@@ -377,7 +403,8 @@ Controls:
 
     try:
         labeler = InteractiveLabelTool(args.directory, args.default_class,
-                                       start=args.start, only_labeled=args.only_labeled)
+                                       start=args.start, only_labeled=args.only_labeled,
+                                       scale=args.scale)
         labeler.run()
     except FileNotFoundError as e:
         print(f"\n❌ Error: {e}")
