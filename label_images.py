@@ -195,6 +195,23 @@ class InteractiveLabelTool:
 
         return labels
 
+    def flag(self, image_path):
+        """Set a frame aside instead of labeling it.
+
+        An empty label file means "nothing here", so a frame you are unsure
+        about must not get one: in a test set, a correct detection on it would
+        score as a false alarm. Flagged frames go in flagged.txt, next to
+        images/ and labels/, and are left out of every split.
+        """
+        flagged = self.class_dir / 'flagged.txt'
+        names = set(flagged.read_text().split()) if flagged.exists() else set()
+        names.add(image_path.name)
+        flagged.write_text('\n'.join(sorted(names)) + '\n')
+        label_path = self.labels_dir / (image_path.stem + '.txt')
+        if label_path.exists():
+            label_path.unlink()
+        print(f"🚩 Flagged {image_path.name} (no label file written)")
+
     def save_labels(self, image_path):
         """Save labels to YOLO format file in labels/ directory"""
         label_path = self.labels_dir / (image_path.stem + '.txt')
@@ -317,6 +334,10 @@ class InteractiveLabelTool:
                 return False
             elif key == ord('h'):
                 self.hide_info = not getattr(self, 'hide_info', False)
+            elif key == ord('f'):
+                self.flag(image_path)
+                self.current_idx = min(self.current_idx + 1, len(self.image_files) - 1)
+                break
             elif key == ord('n'):
                 self.save_labels(image_path)
                 self.current_idx = min(self.current_idx + 1, len(self.image_files) - 1)
@@ -385,6 +406,7 @@ Controls:
   'c' - Clear labels  'u' - Undo last box
   's' - Save          'q' - Quit
   'h' - Hide/show the info panel
+  'f' - Flag: unsure, set the frame aside (no label file)
   '0-9' - Change class (names come from the season's classes.txt)
         """
     )
